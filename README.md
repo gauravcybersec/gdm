@@ -1,1 +1,3 @@
-# GoogleDriveApiFilesAndFolders
+- working search by account
+- working navigation into folders
+- file/folder ownership is not working. It errors out with 403
