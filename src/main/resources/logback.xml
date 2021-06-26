@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration scan="true">
+
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <!-- encoders are assigned the type
+         ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+    <encoder>
+      <pattern>%d{dd-MMM-yyyy HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+  
+  //OIL configuration for logback logger- {This is sample configuration}
+ <appender name="OILLOG" class="ch.qos.logback.core.FileAppender">
+     <file>/Users/gvarma/app/tomcat/logs/oil.log</file>
+     <encoder>
+         <pattern>%d{yyyy-MM-dd HH:mm:ss,SSS Z} [%t] %logger level=%-5level %msg%n
+         </pattern>
+     </encoder>
+ </appender>
+ <appender name="GDMLOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+     <file>/Users/gvarma/app/tomcat/logs/GDM.log</file>
+     <append>true</append>
+     <encoder>
+         <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n
+         </pattern>
+     </encoder>
+     <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>${LOG_FILE}.%i</fileNamePattern>
+            <minIndex>1</minIndex>
+            <maxIndex>10</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy
+        class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <MaxFileSize>10MB</MaxFileSize>
+     </triggeringPolicy>
+ </appender>
+ 
+
+  <root level="info">
+    <appender-ref ref="STDOUT" />
+    <appender-ref ref="GDMLOG" />
+    
+  </root>
+</configuration>
