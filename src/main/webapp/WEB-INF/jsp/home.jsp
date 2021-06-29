@@ -25,6 +25,9 @@ button {
     overflow: hidden;
     outline:none;
 }
+
+
+
 </style>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script>
@@ -35,7 +38,7 @@ $(document).ready(function(){
     	event.preventDefault();
         var user = $("#fromAccount").val();
         $('#fromAccountDetails').empty();
-        var htmltext = fetchFromGDrive(user, "fromAccountDetails", 1);
+        var htmltext = fetchFromGDrive(user, "fromAccountDetails", 1, null, null);
         $('#fromAccountDetails').html(htmltext);
     });
     
@@ -44,7 +47,7 @@ $(document).ready(function(){
 });
 
 
-function fetchFromGDrive(accountAddress, divid, root, mimeType){
+function fetchFromGDrive(accountAddress, divid, root, mimeType, objName){
 		event.preventDefault();
 	
 		var prefix = "-";
@@ -56,31 +59,40 @@ function fetchFromGDrive(accountAddress, divid, root, mimeType){
 		//get root files
 		if(root==1){
 			
-			makeAjaxCall(accountAddress, divid, root, prefix, "all");
+			makeAjaxCall(accountAddress, divid, root, prefix, "all", objName);
 
 			
 		}else{
 	
-			makeAjaxCall(accountAddress, divid, root, prefix, "file");
-			makeAjaxCall(accountAddress, divid, root, prefix, "folder");
+			makeAjaxCall(accountAddress, divid, root, prefix, "file", objName);
+			makeAjaxCall(accountAddress, divid, root, prefix, "folder", objName);
 		}
 		
 		
 			
 }
 
-function makeAjaxCall(accountAddress, divid, root, prefix, mimeType){
+function makeAjaxCall(accountAddress, divid, root, prefix, mimeType, objName){
 	
 	var cellHtml = "";
 	var toAccountAddress = "interviewtest2062521@gmail.com";
 	
+	var gdriveobject = {
+			objectid: divid,
+			objectname:objName,
+			isroot:root,
+			requestingowner:accountAddress,
+			objmimetype:mimeType
+        };
+	
 	//get files first to display files first
     $.ajax({
         type: "POST",
-        url: "/GDM/fetch?user="+accountAddress+"&objectid="+divid+"&root="+root+"&mimeType="+mimeType,
+        url: "/GDM/fetch",
         async: false,//async because we want to display files first and then folders
         dataType: "json",
         contentType: "application/json; charset=utf-8",
+        data: JSON.stringify(gdriveobject),
         statusCode: {
             204: function(responseObject, textStatus, jqXHR) {
             	cellHtml =  "<div>"+prefix+"No Files in this folder</div>";
@@ -89,7 +101,6 @@ function makeAjaxCall(accountAddress, divid, root, prefix, mimeType){
             	
             }},
         success: function (result, status, xhr) {
-        	console.log(result);
         	
         	$.each(result, function(propName,propVal) {  
         		
@@ -97,10 +108,10 @@ function makeAjaxCall(accountAddress, divid, root, prefix, mimeType){
 			    
 			    if(propVal.type=='folder'){
 
-					cellHtml = cellHtml + prefix+"<button class='btn-minimize' id='b-"+propName+"' onClick=\"toggle(this.id,'"+accountAddress+"','"+propName+"','"+root+"','folder')\";>"+propVal.name+"</button>&nbsp;<img src=\"images/change_owner.jpg\" alt=\"Change Owner\" onClick=\"changeOwner('"+accountAddress+"','"+ propName+"','"+ toAccountAddress+"')\"><div id='"+propName+"' class='widget-b-"+propName+"'></div>";
+					cellHtml = cellHtml + prefix+"<button class='btn-minimize' id='b-"+propName+"' onClick=\"toggle(this.id,'"+accountAddress+"','"+propName+"','"+root+"','folder','"+ propVal.name+"')\";>"+propVal.name+"</button>&nbsp;<img src=\"images/change_owner.jpg\" alt=\"Change Owner\" onClick=\"changeOwner('"+accountAddress+"','"+ propName+"','"+ toAccountAddress+"','"+ propVal.name+"','folder')\"><div id='"+propName+"' class='widget-b-"+propName+"'></div>";
 				}else{
 					
-					cellHtml = cellHtml + "<div id='"+propName+"'>"+prefix+propVal.name+"&nbsp;<img src=\"images/change_owner.jpg\" alt=\"Change Owner\" onClick=\"changeOwner('"+accountAddress+"','"+ propName+"','"+ toAccountAddress+"')\"></div>";
+					cellHtml = cellHtml + "<div id='"+propName+"'>"+prefix+propVal.name+"&nbsp;<img src=\"images/change_owner.jpg\" alt=\"Change Owner\" onClick=\"changeOwner('"+accountAddress+"','"+ propName+"','"+ toAccountAddress+"','"+ propVal.name+"','file')\"></div>";
 
 					
 				}
@@ -123,12 +134,12 @@ function makeAjaxCall(accountAddress, divid, root, prefix, mimeType){
     });
 }
 
-function toggle(id,accountAddress, divid, root, mimeType){
+function toggle(id,accountAddress, divid, root, mimeType, objName){
 
 	event.preventDefault();
 	//$("#"+id).toggleClass('btn-plus');
     //$(".widget-"+id).slideToggle();
-    fetchFromGDrive(accountAddress, divid, root, mimeType);
+    fetchFromGDrive(accountAddress, divid, root, mimeType, objName);
     $("#"+id).attr("onclick","justToggle(this.id)");
 
 }
@@ -139,26 +150,35 @@ function justToggle(id){
     $(".widget-"+id).slideToggle();
 }
 
-function changeOwner(fromAccountAddress, divid, toAccountAddress){
+function changeOwner(fromAccountAddress, divid, toAccountAddress, objName, mimeType){
 	
 	event.preventDefault();
 
 	var cellHtml = "";
 	
+	var gdriveobject = {
+			objectid: divid,
+			objectname:objName,
+			newowner:toAccountAddress,
+			requestingowner:fromAccountAddress,
+			objmimetype:mimeType
+        };
+	
 	//get files first to display files first
     $.ajax({
         type: "POST",
-        url: "/GDM/changeOwner?fromUser="+fromAccountAddress+"&objectid="+divid+"&toUser="+toAccountAddress,
+        url: "/GDM/changeOwner",
         async: false,//async because we want to display files first and then folders
         dataType: "json",
         contentType: "application/json; charset=utf-8",
+        data: JSON.stringify(gdriveobject),
         statusCode: {
             204: function(responseObject, textStatus, jqXHR) {
-            	alert("Ownership changed successfully. Please refresh screen to reflect changes.");
+            	alert("Ownership changed successfully!");
             	
             },
         	503 : function(responseObject, textStatus, jqXHR) {
-        	alert("Ownership change failed, sorry!");
+        		alert("Ownership change failed with error :"+responseObject.responseText);
         	}
         },
         success: function (result, status, xhr) {
@@ -170,6 +190,7 @@ function changeOwner(fromAccountAddress, divid, toAccountAddress){
         }
     });
 }
+
 
 
 </script>
@@ -187,8 +208,10 @@ function changeOwner(fromAccountAddress, divid, toAccountAddress){
   <table style="width:100%" border=1>
   <tr>
     <th><label for="fromAccount">Google Account:</label>
-  <input type="text" id="fromAccount" name="fromAccount" value="">
+  <input type="text" id="fromAccount" name="fromAccount" value="interviewtest1062521@gmail.com" size="50">
   <button id="fetchFromBtn">Fetch Gdrive Files</button>
+ <label for="fromAccount">Transfer Ownership Google Account:</label>
+  <input type="text" id="toAccount" name="toAccount" value="interviewtest2062521@gmail.com" size="50">
 	</th>
     
   </tr>
@@ -198,6 +221,8 @@ function changeOwner(fromAccountAddress, divid, toAccountAddress){
   
 </table>
 </form>
+
+
 
 <p>Note that the Google Account Owner will have to provide permissions to GDM application. The user will be presented with a screen to provide these permissions.</p>
 

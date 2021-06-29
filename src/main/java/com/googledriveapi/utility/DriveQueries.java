@@ -15,6 +15,7 @@ import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import com.google.api.services.samples.drive.cmdline.queries.DriveBasicReadQueries;
+import com.googledriveapi.model.GDriveObject;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.json.simple.JSONObject;
@@ -48,7 +49,10 @@ public class DriveQueries {
 	 * Global instance of the scopes required by this quickstart. If modifying these
 	 * scopes, delete your previously saved tokens/ folder.
 	 */
-	private final List<String> SCOPES = Collections.singletonList(DriveScopes.DRIVE_METADATA_READONLY);
+	//private final List<String> SCOPES = Collections.singletonList(DriveScopes.DRIVE_METADATA_READONLY);
+	//modified the below to be a WRITE SCOPE instead of read-only
+	private final List<String> SCOPES = Collections.singletonList(DriveScopes.DRIVE);
+
 	private final String CREDENTIALS_FILE_PATH = "/credentials.json";
 	private Drive service;
 	private String user;
@@ -65,11 +69,13 @@ public class DriveQueries {
 		InputStream in = DriveQueries.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
 		GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
+	
 		// Build flow and trigger user authorization request.
 		GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(HTTP_TRANSPORT, JSON_FACTORY,
 				clientSecrets, SCOPES)
 						.setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
 						.setAccessType("offline").build();
+		
 
 		// setting this port static may not work for multiple users trying at the same
 		// time; no scalable
@@ -101,7 +107,7 @@ public class DriveQueries {
 		}
 
 	}
-
+	
 	private JSONObject getChildItemsInJSON() {
 
 		JSONObject folderStructure = null;
@@ -226,16 +232,17 @@ public class DriveQueries {
 	public static void main(String... args) throws IOException, GeneralSecurityException {
 		DriveQueries obj = new DriveQueries("interviewtest1062521@gmail.com");
 		// obj.getRootFolderStructureInJSON();
-		obj.changeOwnerGDriveObject("1-M0wQEDW8Ux6WPQ2Xi1g3rBbJrEWVZ0D", "", "interviewtest2062521@gmail.com");
+		GDriveObject driveObj = new GDriveObject();
+		driveObj.setObjectId("1I95GFe4lYQCi8c_hxi2agvsilAdGK3Qn");
+		driveObj.setNewOwner("interviewtest2062521@gmail.com");
+		GDriveObject driveObjResult = obj.changeOwnerGDriveObject(driveObj);
+		logger.info(driveObjResult.getOwnershipTransferErrors());
 	}
 
-	public Boolean changeOwnerGDriveObject(String objectid, String fromUser, String toUser) {
-		Boolean result = false;
+	public GDriveObject changeOwnerGDriveObject(GDriveObject driveObj) {
 		DriveBasicReadQueries query = new DriveBasicReadQueries(service);
 
-		result = query.changeOwnerGDriveObject(objectid, fromUser, toUser);
-		System.out.println("changeOwnerGDriveObject():" + result);
+		return query.changeOwnerGDriveObject(driveObj);
 
-		return result;
 	}
 }

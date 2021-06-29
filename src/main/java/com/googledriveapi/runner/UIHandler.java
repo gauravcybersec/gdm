@@ -1,20 +1,21 @@
 package com.googledriveapi.runner;
 
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.googledriveapi.model.GDriveObject;
 import com.googledriveapi.utility.DriveQueries;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 
@@ -34,13 +35,9 @@ public class UIHandler implements CommandLineRunner {
 	@RequestMapping(value = "/home", method = RequestMethod.GET)
 	public ModelAndView homePage(HttpServletResponse resp) {
 
-		logger.debug("homePage() START");
-
 		ModelAndView obj = new ModelAndView();
 
 		obj.setViewName("home");
-
-		logger.debug("homePage() END");
 
 		return obj;
 
@@ -59,29 +56,33 @@ public class UIHandler implements CommandLineRunner {
 	@RequestMapping(value = "/fetch", method = RequestMethod.POST)
 	public void fetchGDriveRootFolder(HttpServletRequest req, HttpServletResponse resp) {
 
-		logger.debug("fetchGDriveRootFolder() START");
-		logger.debug("fetchGDriveRootFolder(); User is " + req.getParameter("user"));
-		logger.debug("fetchGDriveRootFolder(); mimeType is " + req.getParameter("mimeType"));
-
-		String user = req.getParameter("user");
-
-		String objectid = req.getParameter("objectid");
-
-		String root = req.getParameter("root");
-
-		String mimeType = req.getParameter("mimeType");
-
-		// validate and sanitize inputs (no special characters, code etc)
-		// create fileModel and add params to it
-		// validateInputFields(fileModel);
-
-		resp.setCharacterEncoding("UTF-8");
-		resp.setContentType("application/json");
+		GDriveObject driveObj = new GDriveObject();
 
 		try {
-			DriveQueries obj = new DriveQueries(req.getParameter("user"));
+
+			JSONObject reqJSON = getJSON(req);
+			
+			if (reqJSON != null) {
+				
+				driveObj = populateGDriveObjFromJSON(reqJSON);
+				
+				logger.info("fetchGDriveRootFolder()" + reqJSON.toString());
+
+				
+			}
+
+
+			// validate and sanitize inputs (no special characters, code etc)
+			// create fileModel and add params to it
+			// validateInputFields(reqJSON);
+
+			resp.setCharacterEncoding("UTF-8");
+			resp.setContentType("application/json");
+
+			DriveQueries obj = new DriveQueries(driveObj.getRequestingOwner());
 			PrintWriter out = resp.getWriter();
 			resp.setStatus(HttpServletResponse.SC_OK);
+			String root = reqJSON.get("isroot").toString();
 
 			// root folder
 			if (root == null || root.length() == 0 || root.equalsIgnoreCase("1")) {
@@ -94,10 +95,10 @@ public class UIHandler implements CommandLineRunner {
 				}
 				out.print(result);
 
-			} else {
-				if (objectid != null && objectid.length() > 0) {
+			} else {// any other folder but root
+				if (driveObj.getObjectId() != null && driveObj.getObjectId().length() > 0) {
 
-					JSONObject result = obj.listChildItemsOfFolderID(objectid, mimeType);
+					JSONObject result = obj.listChildItemsOfFolderID(driveObj.getObjectId(), driveObj.getMimeType());
 					if (result.isEmpty()) {
 						resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
 
@@ -116,43 +117,47 @@ public class UIHandler implements CommandLineRunner {
 		} catch (IOException e) {
 			resp.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
 
-			logger.error(e.getMessage());
+			logger.error("Exception in fetchGDriveRootFolder()" + e.getMessage());
 		}
 
 	}
 
 	@RequestMapping(value = "/changeOwner", method = RequestMethod.POST)
 	public void changeOwnerGDriveObject(HttpServletRequest req, HttpServletResponse resp) {
-
-		String fromUser = req.getParameter("fromUser");
-
-		String objectid = req.getParameter("objectid");
-
-		String toUser = req.getParameter("toUser");
-
-		// validate and sanitize inputs (no special characters, code etc)
-		// create fileModel and add params to it
-		// validateInputFields(fileModel);
-
-		resp.setCharacterEncoding("UTF-8");
-		resp.setContentType("application/json");
+		GDriveObject driveObj = new GDriveObject();
 
 		try {
-			DriveQueries obj = new DriveQueries(fromUser);
+			JSONObject reqJSON = getJSON(req);
+
+			if (reqJSON != null) {
+				
+				driveObj = populateGDriveObjFromJSON(reqJSON);
+				
+				logger.info("changeOwnerGDriveObject()" + reqJSON.toString());
+
+				
+			}
+
+			resp.setCharacterEncoding("UTF-8");
+			resp.setContentType("application/json");
+
+			DriveQueries obj = new DriveQueries(driveObj.getRequestingOwner());
 			PrintWriter out = resp.getWriter();
 
-			if (objectid != null && objectid.length() > 0) {
+			if (driveObj.getObjectId() != null && driveObj.getObjectId().length() > 0) {
 
-				Boolean result = obj.changeOwnerGDriveObject(objectid, fromUser, toUser);
-				if (result) {
-					// send 204 if changing ownership was successful
+				GDriveObject driveObjResult = obj.changeOwnerGDriveObject(driveObj);
+				if (driveObjResult.isOwnershipTransfered()) {
+					// Reply with 204 if changing ownership was successful
 
 					resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
 
 				} else {
 
-					// send 503 if changing ownership failed
+					// Reply with 503 if changing ownership failed
 					resp.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+					resp.setContentType("text/html");
+					out.print(driveObjResult.getOwnershipTransferErrors());
 
 				}
 
@@ -167,9 +172,53 @@ public class UIHandler implements CommandLineRunner {
 		} catch (IOException e) {
 			resp.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
 
-			logger.error(e.getMessage());
+			logger.error("Exception in changeOwnerGDriveObject()" + e.getMessage());
 		}
+	}
 
+	private GDriveObject populateGDriveObjFromJSON(JSONObject reqJSON) {
+		
+		GDriveObject driveObj = new GDriveObject();
+		
+		if(reqJSON.get("requestingowner")!=null)
+			driveObj.setRequestingOwner(reqJSON.get("requestingowner").toString());
+		
+		if(reqJSON.get("objectid")!=null)
+			driveObj.setObjectId(reqJSON.get("objectid").toString());
+		
+		if(reqJSON.get("newowner")!=null)
+			driveObj.setNewOwner(reqJSON.get("newowner").toString());
+		
+		if(reqJSON.get("objmimetype")!=null)
+			driveObj.setMimeType(reqJSON.get("objmimetype").toString());
+
+		if(reqJSON.get("objectname")!=null)
+			driveObj.setObjectName(reqJSON.get("objectname").toString());
+
+		
+		return driveObj;
+	}
+
+	private JSONObject getJSON(HttpServletRequest request) {
+
+		StringBuffer jb = new StringBuffer();
+		String line = null;
+		try {
+			BufferedReader reader = request.getReader();
+			while ((line = reader.readLine()) != null)
+				jb.append(line);
+		} catch (Exception e) {
+			/* report an error */ }
+
+		try {
+			JSONParser parser = new JSONParser();
+
+			return (JSONObject) parser.parse(jb.toString());
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 }
