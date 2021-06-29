@@ -1,5 +1,5 @@
 # GDM - Google Drive Manager
-This application provides the ability to navigate Google Drive folders or files for a given Google Account. It has a very basic UI which is capable of showing Google Drive Directory Structure. Unlike Google Drive Web application, this application shows the entire directory structure on a single page.
+This application provides the ability to navigate Google Drive folders or files for a given Google Account. It has a very basic UI which is capable of showing Google Drive Directory Structure. Unlike Google Drive Web application, this application shows the entire directory structure on a single page. GDM application also provides functionality to transfer ownership of folders and files.
 
 ###### Limitations : The UI is built to handle at most 10 drilled-down directories and the presentation will not be friendly if Google Drive has deeper directory structure.
 
@@ -55,9 +55,7 @@ Test cases are not included at this time.
 ## What is working in this release?
 - Search by Google account
 - Step-by-step navigation into folders and their content
-
-## What is not available in this release?
-- file/folder transfer ownership is not working. It errors out with 403 status code.
+- File/folder transfer ownership is available but is limited by Google API rate limits. There is also a defect in progress where ownership transfer of non-Google files results in error - "You can't change the owner of this item".
 
 ## Troubleshooting
 During OAuth2 consent from user, if the browser window is closed without getting proper response, the application will stop running with Exception "java.io.IOException: java.net.BindException: Address already in use (Bind failed)" 
@@ -66,5 +64,9 @@ During OAuth2 consent from user, if the browser window is closed without getting
 Delete OAuth tokens for users
 ##### _Solution : Navigate to /tokens and delete all files in this directory_
 
-Log/console has exception - Exception in changeOwnerGDriveObject:403 Forbidden
-##### _Solution : Ownership transfer functionality is still under development. This exception shows up when 'Change Owner' icon is clicked on the UI_
+Log/console has exception - Exception in changeOwnerGDriveObject:"Rate limit exceeded. User message: \"Sorry, you have exceeded your sharing quota.\""
+##### _Solution : Request additional quota from Google_
+
+Log/console has exception - "Bad Request. User message: \"You can't change the owner of this item.\""
+##### _Solution : This exception is still under investigation. It could be that only Google files are allowed to transfer ownership like mentioned here https://support.google.com/drive/answer/2494892_
+
