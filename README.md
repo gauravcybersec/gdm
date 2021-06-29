@@ -47,6 +47,7 @@ Create a new Google account or use an exisitng one for testing this application.
 
 ## References / Credits
 Google Drive API SDK - https://developers.google.com/drive/api/v3/about-sdk
+Limitations of Ownership Transfer - https://support.google.com/drive/answer/2494892
 
 ## Tests Cases
 Test cases are not included at this time.
